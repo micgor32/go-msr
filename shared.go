@@ -5,6 +5,8 @@ import (
 	"os"
 )
 
+const defaultFmtStr = "/dev/cpu/%d/msr"
+
 type MSRDev struct {
 	dev *os.File
 }
