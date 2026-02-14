@@ -1,3 +1,6 @@
+// This pkg is intended to be run on QEMU by running msr_test.go
+// from the root dir of go-msr. It can be, however, used
+
 package main
 
 import (
@@ -28,7 +31,7 @@ type msrs struct {
 // Yes, both are doing reads per cpu, so the name of the function might be
 // bit misleading. The idea is, that we first just use MSR and feed it with
 // closure that is doing essentially the same logic msr.ReadMSR().
-func sessionPerCpu(cpu int, testName string, msrAddr int64) error {
+func sessionPerCpu(cpu int, testName string, msrAddr int64) (uint64, error) {
 	var msrData uint64
 	err := msr.MSR(cpu, func(dev msr.MSRDev) error {
 		var readErr error
@@ -36,15 +39,36 @@ func sessionPerCpu(cpu int, testName string, msrAddr int64) error {
 		return readErr
 	})
 	if err != nil {
-		return fmt.Errorf("msr.Read aborted with: %v\n", err)
+		return 0xff, fmt.Errorf("msr.Read aborted with: %v\n", err)
 	}
 
 	fmt.Printf("%s, core %d, 0x%x\n", testName, cpu, msrData)
-	return nil
+	return msrData, nil
 }
 
-func singleRead() {
+func singleRead(cpu int, testName string, msrAddr int64) (uint64, error) {
+	res, err := msr.ReadMSR(cpu, msrAddr)
+	if err != nil {
+		return 0xff, fmt.Errorf("msrReadMSR aborted with: %v\n", err)
+	}
 
+	fmt.Printf("%s, core %d, 0x%x\n", testName, cpu, res)
+	return res, nil
+}
+
+// todo: also check for 0xff, if thats the case also fail
+func eq(e []uint64) bool {
+	if len(e) <= 1 {
+		return true
+	}
+
+	f := e[0]
+	for _, v := range e[1:] {
+		if v != f {
+			return false
+		}
+	}
+	return true
 }
 
 func main() {
@@ -68,11 +92,35 @@ func main() {
 	// n = 11 (range tests, so constant basically), m = noCpus
 	// so still linear :D
 	for _, test := range tests {
+		var sessionRet []uint64
+		var singleRet []uint64
+
 		for i := 0; i <= (noCpus - 1); i++ {
-			err := sessionPerCpu(i, test.name, test.msr)
+			retSes, err := sessionPerCpu(i, test.name, test.msr)
 			if err != nil {
-				fmt.Printf("%v", err)
+				fmt.Printf("%v\n", err)
 			}
+
+			sessionRet = append(sessionRet, retSes)
+
+			retSin, err := singleRead(i, test.name, test.msr)
+			if err != nil {
+				fmt.Printf("%v\n", err)
+			}
+
+			singleRet = append(singleRet, retSin)
+		}
+
+		if eq(sessionRet) {
+			fmt.Printf("session %s consistent accross all cpus\n", test.name)
+		} else {
+			fmt.Printf("session %s not consistent accross all cpus\n", test.name)
+		}
+
+		if eq(singleRet) {
+			fmt.Printf("single %s consistent accross all cpus\n", test.name)
+		} else {
+			fmt.Printf("single %s not consistent accross all cpus\n", test.name)
 		}
 	}
 }

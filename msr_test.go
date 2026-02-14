@@ -6,6 +6,7 @@
 package msr_test
 
 import (
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -14,6 +15,10 @@ import (
 	"github.com/hugelgupf/vmtest/qemu"
 	"github.com/hugelgupf/vmtest/scriptvm"
 	"github.com/u-root/mkuimage/uimage"
+)
+
+var (
+	msrs = []string{"SMBASE", "MTRR_CAP", "SMRR_PHYS_BASE", "SMRR_PHYS_MASK", "FEATURE_CONTROL", "PLATFORM_ID", "IA32_DEBUG_INTERFACE", "TSC", "FSB_FREQ", "PLATFORM_INFO", "IA32_EFER"}
 )
 
 // Tests both sample implementations of MSR R/W.
@@ -56,8 +61,10 @@ func TestRdmsrInQemu(t *testing.T) {
 		),
 	)
 
-	if _, err := vm.Console.Expect(expect.String("placeholder for now (i.e. will fail :D)")); err != nil {
-		t.Errorf("VM output did not match expectations: %v", err)
+	for _, msr := range msrs {
+		if _, err := vm.Console.Expect(expect.String(fmt.Sprintf("%s consistent accross all cpus", msr))); err != nil {
+			t.Errorf("VM output did not match expectations: %v", err)
+		}
 	}
 
 	if err := vm.Kill(); err != nil {
