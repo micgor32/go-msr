@@ -18,22 +18,13 @@ import (
 
 // Tests both sample implementations of MSR R/W.
 // TODO: add note about extending
-func TestRDMSRQEMU(t *testing.T) {
+func TestRdmsrInQemu(t *testing.T) {
 	// Out of principle again, building this
 	// library on other arch's makes no sense
 	// anyways.
 	qemu.SkipIfNotArch(t, qemu.ArchAMD64)
 
-	var ovmf string
 	var bzImage string
-
-	if ovmf = os.Getenv("VMTEST_OVMF"); len(ovmf) == 0 {
-		t.Skipf("VMTEST_OVMF not set!!")
-	}
-
-	if _, err := os.Stat(ovmf); err != nil {
-		t.Skipf("OVMF.fd image is not found: %s\n", ovmf)
-	}
 
 	if bzImage = os.Getenv("VMTEST_KERNEL"); len(bzImage) == 0 {
 		t.Skipf("VMTEST_KERNEL not set!!")
@@ -43,23 +34,25 @@ func TestRDMSRQEMU(t *testing.T) {
 		t.Skipf("Linux kernel image is not found: %s\n", bzImage)
 	}
 
-	vm := scriptvm.Start(t, "rdmsr", "",
+	vm := scriptvm.Start(t, "msr", "",
 		scriptvm.WithUimage(
 			uimage.WithBusyboxCommands(
 				"github.com/u-root/u-root/cmds/core/init",
-				"github.com/micgor32/go-msr/examples",
+				"github.com/micgor32/go-msr/tests/rdmsr",
 			),
-			uimage.WithUinitCommand("/bbin/examples"),
+			uimage.WithUinitCommand("/bbin/rdmsr"),
 		),
 		scriptvm.WithQEMUFn(
 			qemu.WithVMTimeout(5*time.Minute),
-			qemu.ArbitraryArgs("-machine", "q35"),
+			//qemu.ArbitraryArgs("-machine", "q35"),
 			qemu.ArbitraryArgs("-m", "4096"),
+			qemu.ArbitraryArgs("-cpu", "Skylake-Client"),
 			// arb. nr of cpus, actually we would need
 			// only 2 to test what we whant
 			qemu.ArbitraryArgs("-smp", "4"),
-			qemu.ArbitraryArgs("-bios", ovmf),
-			qemu.ArbitraryArgs("-kernel", bzImage),
+			qemu.WithKernel(bzImage),
+			qemu.WithAppendKernel("console=ttyS0,115200", "earlyprintk=serial,ttyS0,115200", "loglevel=8"),
+			//qemu.LogSerialByLine(qemu.DefaultPrint("vm", t.Logf)),
 		),
 	)
 
