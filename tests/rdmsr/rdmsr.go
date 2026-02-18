@@ -39,7 +39,7 @@ func sessionPerCpu(cpu int, testName string, msrAddr int64) (uint64, error) {
 		return readErr
 	})
 	if err != nil {
-		return 0xff, fmt.Errorf("msr.Read aborted with: %v\n", err)
+		return 0xff, fmt.Errorf("msr.Read aborted with: %v", err)
 	}
 
 	fmt.Printf("%s, core %d, 0x%x\n", testName, cpu, msrData)
@@ -49,7 +49,7 @@ func sessionPerCpu(cpu int, testName string, msrAddr int64) (uint64, error) {
 func singleRead(cpu int, testName string, msrAddr int64) (uint64, error) {
 	res, err := msr.ReadMSR(cpu, msrAddr)
 	if err != nil {
-		return 0xff, fmt.Errorf("msrReadMSR aborted with: %v\n", err)
+		return 0xff, fmt.Errorf("msrReadMSR aborted with: %v", err)
 	}
 
 	fmt.Printf("%s, core %d, 0x%x\n", testName, cpu, res)

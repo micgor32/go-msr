@@ -8,6 +8,7 @@ package msr_test
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"testing"
 	"time"
 
@@ -71,5 +72,7 @@ func TestRdmsrInQemu(t *testing.T) {
 		t.Errorf("Wait for VM process to be killed: %v", err)
 	}
 
-	vm.Wait()
+	if err := vm.Wait(); err != nil && err.(*exec.ExitError).ExitCode() != -1 {
+		t.Errorf("VM returned non-zero exit code: %v", err)
+	}
 }
